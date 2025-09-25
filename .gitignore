@@ -119,6 +119,10 @@ Thumbs.db
 server/uploads/
 !server/uploads/.gitkeep
 
+# FFmpeg downloads
+ffmpeg.zip
+ffmpeg/
+
 # Build outputs
 build/
 dist/
