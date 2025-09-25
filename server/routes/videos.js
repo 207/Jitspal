@@ -3,8 +3,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const Video = require('../models/Video');
 const auth = require('../middleware/auth');
+
+// Set FFmpeg path
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 const router = express.Router();
 

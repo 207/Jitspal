@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ReactPlayer from 'react-player';
 import { fabric } from 'fabric';
 import {
@@ -53,38 +53,22 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
 
   // Initialize Fabric.js canvas
   useEffect(() => {
-    console.log('Canvas initialization effect running:', { 
-      hasCanvasRef: !!canvasRef.current, 
-      hasFabricCanvas: !!fabricCanvasRef.current 
-    });
-    
     if (canvasRef.current && !fabricCanvasRef.current) {
       try {
-        console.log('Creating Fabric.js canvas...');
         fabricCanvasRef.current = new fabric.Canvas(canvasRef.current, {
           width: 640,
           height: 360,
           backgroundColor: 'transparent'
         });
         
-        console.log('Fabric.js canvas created successfully');
-        
         // Handle drawing events - define inline to avoid dependency issues
         fabricCanvasRef.current.on('mouse:down', (e) => {
-          console.log('Mouse down event:', { annotationMode, isCoach, hasCanvas: !!fabricCanvasRef.current });
-          
           if (annotationMode === 'comment' || !isCoach || !fabricCanvasRef.current) {
-            console.log('Drawing blocked:', { 
-              isComment: annotationMode === 'comment', 
-              isCoach, 
-              hasCanvas: !!fabricCanvasRef.current 
-            });
             return;
           }
           
           setIsDrawing(true);
           const pointer = fabricCanvasRef.current.getPointer(e.e);
-          console.log('Drawing at position:', pointer, 'with mode:', annotationMode);
           
           if (annotationMode === 'circle') {
             const circle = new fabric.Circle({
@@ -96,7 +80,6 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
               strokeWidth: 3
             });
             fabricCanvasRef.current.add(circle);
-            console.log('Circle added to canvas');
           } else if (annotationMode === 'arrow') {
             const arrow = new fabric.Line([pointer.x, pointer.y, pointer.x + 50, pointer.y], {
               stroke: annotationColor,
@@ -105,7 +88,6 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
               originY: 'center'
             });
             fabricCanvasRef.current.add(arrow);
-            console.log('Arrow added to canvas');
           } else if (annotationMode === 'highlight') {
             const rect = new fabric.Rect({
               left: pointer.x - 25,
@@ -117,7 +99,6 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
               strokeWidth: 2
             });
             fabricCanvasRef.current.add(rect);
-            console.log('Highlight added to canvas');
           }
         });
         
@@ -129,8 +110,6 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
         fabricCanvasRef.current.on('mouse:up', (e) => {
           setIsDrawing(false);
         });
-        
-        console.log('Canvas event listeners attached');
       } catch (error) {
         console.error('Error initializing Fabric.js canvas:', error);
       }
@@ -139,7 +118,6 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
     return () => {
       if (fabricCanvasRef.current) {
         try {
-          console.log('Disposing Fabric.js canvas...');
           fabricCanvasRef.current.dispose();
           fabricCanvasRef.current = null;
         } catch (error) {
@@ -148,6 +126,7 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
       }
     };
   }, []); // Empty dependency array - canvas should only initialize once
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // Update canvas size when video loads
   useEffect(() => {
@@ -156,7 +135,6 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
         const videoElement = playerRef.current.getInternalPlayer();
         if (videoElement) {
           const rect = videoElement.getBoundingClientRect();
-          console.log('Updating canvas size:', rect);
           fabricCanvasRef.current.setDimensions({
             width: rect.width,
             height: rect.height
@@ -166,7 +144,6 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
     };
 
     if (duration > 0) {
-      console.log('Video duration set, updating canvas size');
       // Update immediately
       updateCanvasSize();
       
@@ -280,8 +257,6 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
             }
           });
           fabricCanvasRef.current.clear();
-        } else {
-          console.log('No objects to save');
         }
       } catch (error) {
         console.error('Error saving drawing:', error);

@@ -44,19 +44,12 @@ app.use('/api/annotations', require('./routes/annotations'));
 
 // Socket.io for real-time collaboration
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-  
   socket.on('join-video', (videoId) => {
     socket.join(videoId);
-    console.log(`User ${socket.id} joined video ${videoId}`);
   });
   
   socket.on('annotation-update', (data) => {
     socket.to(data.videoId).emit('annotation-update', data);
-  });
-  
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
   });
 });
 
