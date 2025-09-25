@@ -5,10 +5,13 @@
   "main": "server/index.js",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev:full": "docker compose up -d && sleep 3 && npm run dev",
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
-    "install-all": "npm install && cd server && npm install && cd ../client && npm install"
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "stop": "docker compose down",
+    "shutdown": "docker compose down && echo 'All services stopped'"
   },
   "keywords": ["bjj", "video", "analysis", "coaching", "martial-arts"],
   "author": "Your Name",

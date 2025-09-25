@@ -47,9 +47,9 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
   const [annotationMode, setAnnotationMode] = useState('comment');
   const [annotationText, setAnnotationText] = useState('');
   const [isDrawing, setIsDrawing] = useState(false);
-  const [drawingTool] = useState('circle');
   const [annotationColor] = useState('#ff0000');
   const [showAnnotations] = useState(true);
+
 
   // Initialize Fabric.js canvas
   useEffect(() => {
@@ -60,16 +60,61 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
           height: 360,
           backgroundColor: 'transparent'
         });
-
-        // Handle drawing events
-        fabricCanvasRef.current.on('mouse:down', handleMouseDown);
-        fabricCanvasRef.current.on('mouse:move', handleMouseMove);
-        fabricCanvasRef.current.on('mouse:up', handleMouseUp);
+        
+        // Handle drawing events - define inline to avoid dependency issues
+        fabricCanvasRef.current.on('mouse:down', (e) => {
+          if (annotationMode === 'comment' || !isCoach || !fabricCanvasRef.current) {
+            return;
+          }
+          
+          setIsDrawing(true);
+          const pointer = fabricCanvasRef.current.getPointer(e.e);
+          
+          if (annotationMode === 'circle') {
+            const circle = new fabric.Circle({
+              left: pointer.x - 25,
+              top: pointer.y - 25,
+              radius: 25,
+              fill: 'transparent',
+              stroke: annotationColor,
+              strokeWidth: 3
+            });
+            fabricCanvasRef.current.add(circle);
+          } else if (annotationMode === 'arrow') {
+            const arrow = new fabric.Line([pointer.x, pointer.y, pointer.x + 50, pointer.y], {
+              stroke: annotationColor,
+              strokeWidth: 3,
+              originX: 'center',
+              originY: 'center'
+            });
+            fabricCanvasRef.current.add(arrow);
+          } else if (annotationMode === 'highlight') {
+            const rect = new fabric.Rect({
+              left: pointer.x - 25,
+              top: pointer.y - 25,
+              width: 50,
+              height: 50,
+              fill: 'rgba(255, 255, 0, 0.3)',
+              stroke: annotationColor,
+              strokeWidth: 2
+            });
+            fabricCanvasRef.current.add(rect);
+          }
+        });
+        
+        fabricCanvasRef.current.on('mouse:move', (e) => {
+          if (!isDrawing || annotationMode === 'comment') return;
+          // Handle drawing continuation if needed
+        });
+        
+        fabricCanvasRef.current.on('mouse:up', (e) => {
+          setIsDrawing(false);
+        });
       } catch (error) {
         console.error('Error initializing Fabric.js canvas:', error);
       }
     }
-
+    
     return () => {
       if (fabricCanvasRef.current) {
         try {
@@ -80,7 +125,8 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
         }
       }
     };
-  }, []);
+  }, []); // Empty dependency array - canvas should only initialize once
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // Update canvas size when video loads
   useEffect(() => {
@@ -137,41 +183,6 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
     }
   }, [annotations, showAnnotations]);
 
-  const handleMouseDown = (e) => {
-    if (annotationMode === 'comment' || !isCoach || !fabricCanvasRef.current) return;
-    
-    setIsDrawing(true);
-    const pointer = fabricCanvasRef.current.getPointer(e.e);
-    
-    if (drawingTool === 'circle') {
-      const circle = new fabric.Circle({
-        left: pointer.x - 25,
-        top: pointer.y - 25,
-        radius: 25,
-        fill: 'transparent',
-        stroke: annotationColor,
-        strokeWidth: 3
-      });
-      fabricCanvasRef.current.add(circle);
-    } else if (drawingTool === 'arrow') {
-      const arrow = new fabric.Line([pointer.x, pointer.y, pointer.x + 50, pointer.y], {
-        stroke: annotationColor,
-        strokeWidth: 3,
-        originX: 'center',
-        originY: 'center'
-      });
-      fabricCanvasRef.current.add(arrow);
-    }
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDrawing || annotationMode === 'comment') return;
-    // Handle drawing continuation if needed
-  };
-
-  const handleMouseUp = (e) => {
-    setIsDrawing(false);
-  };
 
   const handleProgress = (state) => {
     if (!seeking) {
@@ -222,14 +233,24 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
   };
 
   const handleSaveDrawing = () => {
+    console.log('Save drawing called:', { 
+      hasCanvas: !!fabricCanvasRef.current, 
+      isCoach, 
+      annotationMode 
+    });
+    
     if (fabricCanvasRef.current && isCoach) {
       try {
         const objects = fabricCanvasRef.current.getObjects();
+        console.log('Canvas objects:', objects.length);
+        
         if (objects.length > 0) {
           const drawingData = objects.map(obj => obj.toObject());
+          console.log('Saving annotation:', { timestamp: currentTime, type: annotationMode });
+          
           onAnnotationCreate({
             timestamp: currentTime,
-            type: drawingTool,
+            type: annotationMode,
             content: {
               drawingData: drawingData,
               color: annotationColor
@@ -264,9 +285,12 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
       <Box sx={{ 
         position: 'relative', 
         width: '100%',
-        backgroundColor: '#000',
         borderRadius: 1,
-        overflow: 'hidden'
+        overflow: 'hidden',
+        '& > div': {
+          width: '100% !important',
+          height: 'auto !important'
+        }
       }}>
         <ReactPlayer
           ref={playerRef}
@@ -278,7 +302,21 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
           onDuration={handleDuration}
           width="100%"
           height="auto"
-          style={{ borderRadius: '4px' }}
+          style={{ 
+            borderRadius: '4px',
+            backgroundColor: 'transparent'
+          }}
+          config={{
+            file: {
+              attributes: {
+                style: {
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block'
+                }
+              }
+            }
+          }}
         />
         
         {/* Annotation Canvas Overlay */}
@@ -293,7 +331,8 @@ const VideoPlayer = ({ videoUrl, annotations = [], onAnnotationCreate, onAnnotat
             pointerEvents: isCoach ? 'auto' : 'none',
             zIndex: 10,
             borderRadius: '4px',
-            cursor: isCoach && annotationMode !== 'comment' ? 'crosshair' : 'default'
+            cursor: isCoach && annotationMode !== 'comment' ? 'crosshair' : 'default',
+            backgroundColor: 'transparent'
           }}
         />
         

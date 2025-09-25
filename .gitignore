@@ -101,6 +101,7 @@ temp/
 # Editor directories and files
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
@@ -117,6 +118,10 @@ Thumbs.db
 # Uploads (you may want to keep some uploaded files)
 server/uploads/
 !server/uploads/.gitkeep
+
+# FFmpeg downloads
+ffmpeg.zip
+ffmpeg/
 
 # Build outputs
 build/
