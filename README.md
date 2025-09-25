@@ -2,10 +2,10 @@
 
 A comprehensive web platform for Brazilian Jiu Jitsu practitioners to upload, analyze, and receive feedback on their rolling and competition videos. Coaches can provide timestamped comments and visual annotations directly on videos, while students can view all feedback in one organized place.
 
-## 🥋 Features
+## Features
 
 ### For Students
-- **Video Upload**: Upload rolling and competition videos to the cloud
+- **Video Upload**: Upload rolling and competition videos to local storage
 - **Coach Feedback**: Receive detailed timestamped comments from coaches
 - **Visual Annotations**: See circles, arrows, and highlights drawn directly on videos
 - **Progress Tracking**: View all feedback and improvements over time
@@ -18,7 +18,7 @@ A comprehensive web platform for Brazilian Jiu Jitsu practitioners to upload, an
 - **Student Management**: Organize and track multiple students
 - **Real-time Collaboration**: Provide feedback that students can see immediately
 
-## 🚀 Tech Stack
+## Tech Stack
 
 ### Frontend
 - **React 18** - Modern UI framework
@@ -33,17 +33,17 @@ A comprehensive web platform for Brazilian Jiu Jitsu practitioners to upload, an
 - **Express.js** - Web framework
 - **MongoDB** - Database
 - **Mongoose** - ODM for MongoDB
-- **Cloudinary** - Video storage and processing
+- **Local File Storage** - Video storage using Multer
 - **Socket.io** - Real-time communication
 - **JWT** - Authentication
 - **Multer** - File upload handling
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 - Node.js (v16 or higher)
-- MongoDB (local or cloud)
-- Cloudinary account (for video storage)
+- Docker and Docker Compose (for MongoDB)
+- WSL2 (Windows) or native Docker support (Mac/Linux)
 
 ### Setup
 
@@ -53,24 +53,27 @@ A comprehensive web platform for Brazilian Jiu Jitsu practitioners to upload, an
    cd jitspal
    ```
 
-2. **Install dependencies**
+2. **Start MongoDB with Docker**
+   ```bash
+   # Start MongoDB container
+   docker run -d --name jitspal-mongo -p 27017:27017 mongo:latest
+   ```
+
+3. **Install dependencies**
    ```bash
    npm run install-all
    ```
 
-3. **Environment Setup**
+4. **Environment Setup**
    
    Create a `.env` file in the `server` directory:
    ```env
    MONGODB_URI=mongodb://localhost:27017/jitspal
    JWT_SECRET=your_jwt_secret_key_here
-   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-   CLOUDINARY_API_KEY=your_cloudinary_api_key
-   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
    PORT=5000
    ```
 
-4. **Start the development servers**
+5. **Start the development servers**
    ```bash
    npm run dev
    ```
@@ -79,7 +82,7 @@ A comprehensive web platform for Brazilian Jiu Jitsu practitioners to upload, an
    - Backend server on `http://localhost:5000`
    - Frontend development server on `http://localhost:3000`
 
-## 🎯 Usage
+## Usage
 
 ### Getting Started
 
@@ -108,7 +111,7 @@ A comprehensive web platform for Brazilian Jiu Jitsu practitioners to upload, an
    - Click on timestamps to jump to specific moments
    - Reply to comments for clarification
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 jitspal/
@@ -128,7 +131,7 @@ jitspal/
 └── package.json          # Root package.json
 ```
 
-## 🔧 API Endpoints
+## API Endpoints
 
 ### Authentication
 - `POST /api/auth/register` - Register new user
@@ -151,7 +154,7 @@ jitspal/
 - `POST /api/annotations/:id/replies` - Add reply to annotation
 - `POST /api/annotations/:id/reactions` - Add reaction to annotation
 
-## 🎨 Key Features Implementation
+## Key Features Implementation
 
 ### Video Annotation System
 - **Fabric.js Integration**: Canvas overlay for drawing tools
@@ -160,17 +163,67 @@ jitspal/
 - **Persistent Storage**: MongoDB for annotation data
 
 ### Video Upload & Processing
-- **Cloudinary Integration**: Secure cloud storage and processing
+- **Local File Storage**: Secure local storage using Multer
 - **Progress Tracking**: Real-time upload progress
 - **File Validation**: Type and size checking
-- **Thumbnail Generation**: Automatic video thumbnails
+- **Static File Serving**: Direct access to uploaded videos
 
 ### User Management
 - **Role-based Access**: Different permissions for coaches and students
 - **JWT Authentication**: Secure token-based auth
 - **Profile Management**: User details and preferences
 
-## 🚀 Deployment
+## Docker Development Setup
+
+### Using Docker for MongoDB (Recommended)
+
+1. **Start MongoDB Container**
+   ```bash
+   # Start MongoDB with persistent data
+   docker run -d --name jitspal-mongo -p 27017:27017 -v jitspal-mongo-data:/data/db mongo:latest
+   ```
+
+2. **Stop MongoDB Container**
+   ```bash
+   docker stop jitspal-mongo
+   ```
+
+3. **Remove MongoDB Container**
+   ```bash
+   docker rm jitspal-mongo
+   ```
+
+4. **View MongoDB Logs**
+   ```bash
+   docker logs jitspal-mongo
+   ```
+
+### Alternative: Docker Compose
+
+Create a `docker-compose.yml` file in the project root:
+```yaml
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: jitspal-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - jitspal-mongo-data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=jitspal
+
+volumes:
+  jitspal-mongo-data:
+```
+
+Then run:
+```bash
+docker-compose up -d
+```
+
+## Deployment
 
 ### Production Build
 ```bash
@@ -185,11 +238,46 @@ npm start
 
 ### Environment Variables for Production
 - Set up MongoDB Atlas or your preferred MongoDB hosting
-- Configure Cloudinary with production credentials
 - Use a strong JWT secret
 - Set appropriate CORS origins
+- Configure file storage limits and paths
 
-## 🤝 Contributing
+## Troubleshooting
+
+### Common Issues
+
+#### MongoDB Connection Issues
+```bash
+# Check if MongoDB container is running
+docker ps | grep mongo
+
+# Check MongoDB logs
+docker logs jitspal-mongo
+
+# Restart MongoDB container
+docker restart jitspal-mongo
+```
+
+#### Docker Permission Issues (WSL2/Linux)
+```bash
+# Add user to docker group
+sudo usermod -aG docker $USER
+
+# Restart WSL or logout/login
+# Then restart Docker Desktop
+```
+
+#### File Upload Issues
+- Ensure `uploads` directory exists in server folder
+- Check file size limits (currently 500MB)
+- Verify file types (only video files allowed)
+
+#### Video Playback Issues
+- Check if video files are accessible via `/uploads/videos/` URL
+- Verify video format compatibility with ReactPlayer
+- Check browser console for CORS errors
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -197,24 +285,17 @@ npm start
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- Brazilian Jiu Jitsu community for inspiration
-- Material-UI team for the excellent component library
-- Fabric.js for canvas drawing capabilities
-- Cloudinary for video storage solutions
-
-## 📞 Support
+## Support
 
 For support, email support@jitspal.com or create an issue in the repository.
 
 ---
 
-**JitsPal** - Elevate your BJJ game with professional video analysis! 🥋
+**JitsPal** - Elevate your BJJ game with professional video analysis!
 
 
 

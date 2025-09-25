@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const ffmpeg = require('fluent-ffmpeg');
 const Video = require('../models/Video');
 const auth = require('../middleware/auth');
 
@@ -9,8 +10,12 @@ const router = express.Router();
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../uploads/videos');
+const thumbnailsDir = path.join(__dirname, '../uploads/thumbnails');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(thumbnailsDir)) {
+  fs.mkdirSync(thumbnailsDir, { recursive: true });
 }
 
 // Configure multer for local file storage
@@ -37,6 +42,27 @@ const upload = multer({
   }
 });
 
+// Function to generate thumbnail from video
+const generateThumbnail = (videoPath, thumbnailPath) => {
+  return new Promise((resolve, reject) => {
+    ffmpeg(videoPath)
+      .screenshots({
+        timestamps: ['00:00:01.000'], // Take screenshot at 1 second
+        filename: path.basename(thumbnailPath),
+        folder: path.dirname(thumbnailPath),
+        size: '400x200'
+      })
+      .on('end', () => {
+        console.log('Thumbnail generated successfully');
+        resolve(thumbnailPath);
+      })
+      .on('error', (err) => {
+        console.error('Error generating thumbnail:', err);
+        reject(err);
+      });
+  });
+};
+
 // Upload video
 router.post('/upload', auth, upload.single('video'), async (req, res) => {
   try {
@@ -49,9 +75,21 @@ router.post('/upload', auth, upload.single('video'), async (req, res) => {
     // Create local file URL
     const videoUrl = `/uploads/videos/${req.file.filename}`;
     
-    // For now, we'll use a placeholder thumbnail
-    // In a real app, you'd generate a thumbnail from the video
-    const thumbnailUrl = '/api/placeholder/400/200';
+    // Generate thumbnail from video
+    const videoPath = path.join(uploadsDir, req.file.filename);
+    const thumbnailFilename = `thumb_${req.file.filename.replace(/\.[^/.]+$/, '.jpg')}`;
+    const thumbnailPath = path.join(thumbnailsDir, thumbnailFilename);
+    let thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+
+    try {
+      // Generate thumbnail
+      await generateThumbnail(videoPath, thumbnailPath);
+      console.log('Thumbnail generated:', thumbnailUrl);
+    } catch (error) {
+      console.error('Failed to generate thumbnail, using placeholder:', error);
+      // Fallback to placeholder if thumbnail generation fails
+      thumbnailUrl = '/api/placeholder/400/200';
+    }
 
     // Create video record
     const video = new Video({
@@ -191,11 +229,18 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Delete local file
+    // Delete local file and thumbnail
     if (video.metadata && video.metadata.filename) {
       const filePath = path.join(uploadsDir, video.metadata.filename);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+      }
+      
+      // Delete thumbnail
+      const thumbnailFilename = `thumb_${video.metadata.filename.replace(/\.[^/.]+$/, '.jpg')}`;
+      const thumbnailPath = path.join(thumbnailsDir, thumbnailFilename);
+      if (fs.existsSync(thumbnailPath)) {
+        fs.unlinkSync(thumbnailPath);
       }
     }
 
